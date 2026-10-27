@@ -29,3 +29,22 @@
 - **Context:** Staff console needs live updates without heavy polling or complex WebSocket handshake/proxy setup.
 - **Decision:** Use HTTP Server-Sent Events (`GET /api/v1/stream`) with tenant-scoped fanout, proxy buffering disabled (`X-Accel-Buffering: no`, `Cache-Control: no-cache, no-transform`), and `Last-Event-ID` tracking for automatic reconnection.
 - **Consequences:** Extremely lightweight, works seamlessly behind reverse proxies (Render, Vercel, Nginx), and connects directly with standard browser `EventSource`.
+
+## ADR-006: Hybrid RAG Search (pgvector Cosine Similarity + Keyword Ranking)
+- **Status:** Accepted
+- **Context:** Agent resolution requires grounded context from tenant documentation, FAQs, and return policies with minimal hallucination, running entirely on $0 free tier.
+- **Decision:** Use PostgreSQL with the `pgvector` extension. Store 768-dimensional document chunk embeddings alongside text. Implement `HybridSearchService` combining cosine distance (`<=>` operator) with full-text search (`tsvector` keyword matching) in a unified score ranking formula.
+- **Consequences:** Zero external vector DB subscription costs (e.g., Pinecone/Weaviate), tenant-isolated queries directly via standard SQL, and sub-15ms retrieval latency.
+
+## ADR-007: Critic-Gated Human-in-the-Loop Interception for High-Risk Actions
+- **Status:** Accepted
+- **Context:** Autonomous support agents must not unilaterally issue irreversible financial refunds or dispatch unverified answers with low confidence.
+- **Decision:** Implement a deterministic `CriticAgent` gate that evaluates resolution confidence score, citation grounding, and tool execution proposals. If a refund is staged or the critic confidence score is $< 0.85$, the ticket status is diverted to `AWAITING_APPROVAL` and staged into an `approvals` table.
+- **Consequences:** Guaranteed guardrails against financial risk and hallucinated responses, with staff review available via the Console Approval Queue for one-click approval, modification, or rejection.
+
+## ADR-008: Virtual Thread Fan-Out for Parallel Agent Pipelines
+- **Status:** Accepted
+- **Context:** Resolving a ticket requires RAG knowledge search and tool action lookups simultaneously. Sequential execution doubles response latency.
+- **Decision:** Utilize Java 21+ Virtual Threads with `CompletableFuture.supplyAsync` in `WorkflowOrchestrator` to fan out `ResolutionAgent` (retrieval + drafting) and `ActionAgent` (order lookup + eligibility evaluation) concurrently.
+- **Consequences:** Wall-clock resolution latency drops to $\max(T_{\text{rag}}, T_{\text{tools}})$, while virtual thread concurrency scales with negligible memory overhead compared to OS threads.
+

@@ -6,6 +6,7 @@ import com.supportpilot.agents.TriageAgent;
 import com.supportpilot.queue.TicketQueue;
 import com.supportpilot.sse.SseHub;
 import com.supportpilot.workflow.TicketEventRepository;
+import com.supportpilot.workflow.WorkflowOrchestrator;
 import com.supportpilot.workflow.WorkflowStateMachine;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -41,6 +42,7 @@ class TicketIngestionIdempotencyTest {
         triageAgent = Mockito.mock(TriageAgent.class);
         sseHub = Mockito.mock(SseHub.class);
         objectMapper = new ObjectMapper();
+        WorkflowOrchestrator workflowOrchestrator = Mockito.mock(WorkflowOrchestrator.class);
 
         ticketService = new TicketService(
                 ticketRepository,
@@ -49,6 +51,7 @@ class TicketIngestionIdempotencyTest {
                 ticketQueue,
                 stateMachine,
                 triageAgent,
+                workflowOrchestrator,
                 sseHub,
                 objectMapper
         );

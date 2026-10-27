@@ -11,7 +11,18 @@ import {
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Clock, Bot, Activity, DollarSign, Cpu, ArrowRight } from 'lucide-react';
+import {
+  Clock,
+  Bot,
+  Activity,
+  DollarSign,
+  Cpu,
+  ArrowRight,
+  Sparkles,
+  BookOpen,
+  Wrench,
+  ShieldCheck,
+} from 'lucide-react';
 
 interface TicketDetailDialogProps {
   ticket: Ticket | null;
@@ -58,6 +69,171 @@ export function TicketDetailDialog({ ticket, open, onOpenChange }: TicketDetailD
       default:
         return 'bg-slate-500/10 text-slate-400 border-slate-500/20';
     }
+  };
+
+interface AgentPayloadData {
+  draftReply?: string;
+  citations?: string[];
+  confidenceScore?: number;
+  toolName?: string;
+  actionExecuted?: boolean;
+  proposedAction?: {
+    actionType?: string;
+    amount?: number | string;
+    orderNumber?: string;
+    reason?: string;
+  };
+  toolOutput?: Record<string, unknown>;
+  score?: number;
+  requiresHumanReview?: boolean;
+  notes?: string;
+}
+
+  const renderAgentPayload = (run: AgentRun) => {
+    if (!run.outputPayload) return null;
+
+    let parsed: AgentPayloadData | null = null;
+    try {
+      parsed = JSON.parse(run.outputPayload) as AgentPayloadData;
+    } catch {
+      return (
+        <div className="text-xs bg-muted/60 rounded p-2.5 font-mono overflow-x-auto text-muted-foreground">
+          {run.outputPayload}
+        </div>
+      );
+    }
+
+    if (!parsed) return null;
+
+    if (run.agentName === 'RESOLUTION') {
+      return (
+        <div className="space-y-3 pt-1">
+          {/* Draft Reply */}
+          <div className="p-3 rounded-md bg-muted/40 border space-y-1.5">
+            <div className="flex items-center justify-between text-xs">
+              <span className="font-semibold text-primary flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5" />
+                Draft Resolution Reply
+              </span>
+              {parsed.confidenceScore != null && (
+                <Badge variant="outline" className="font-mono text-[10px]">
+                  Confidence: {Math.round(parsed.confidenceScore * 100)}%
+                </Badge>
+              )}
+            </div>
+            <p className="text-xs leading-relaxed whitespace-pre-wrap text-foreground/90 font-sans">
+              {parsed.draftReply}
+            </p>
+          </div>
+
+          {/* Citations */}
+          {Array.isArray(parsed.citations) && parsed.citations.length > 0 && (
+            <div className="space-y-1.5">
+              <span className="text-[11px] font-semibold text-muted-foreground flex items-center gap-1">
+                <BookOpen className="w-3 h-3 text-primary" />
+                RAG Knowledge Citations ({parsed.citations.length})
+              </span>
+              <div className="flex flex-wrap gap-1.5">
+                {parsed.citations.map((cite: string, idx: number) => (
+                  <Badge
+                    key={idx}
+                    variant="secondary"
+                    className="text-[10px] bg-primary/10 text-primary border border-primary/20"
+                  >
+                    {cite}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    if (run.agentName === 'ACTION') {
+      return (
+        <div className="space-y-2 pt-1 text-xs">
+          <div className="flex items-center gap-2">
+            <span className="font-semibold flex items-center gap-1.5 text-foreground">
+              <Wrench className="w-3.5 h-3.5 text-blue-400" />
+              Tool: <span className="font-mono text-primary">{parsed.toolName || 'none'}</span>
+            </span>
+            <Badge variant={parsed.actionExecuted ? 'default' : 'secondary'} className="text-[10px]">
+              {parsed.actionExecuted ? 'Executed' : 'No Action'}
+            </Badge>
+          </div>
+
+          {parsed.proposedAction && (
+            <div className="p-2.5 rounded bg-red-500/10 border border-red-500/20 text-xs space-y-1">
+              <div className="flex items-center justify-between text-red-400 font-semibold">
+                <span className="flex items-center gap-1">
+                  <DollarSign className="w-3.5 h-3.5" />
+                  Staged Financial Action: {parsed.proposedAction.actionType || 'REFUND'}
+                </span>
+                {parsed.proposedAction.amount && (
+                  <span className="font-mono">${Number(parsed.proposedAction.amount).toFixed(2)}</span>
+                )}
+              </div>
+              <p className="text-muted-foreground text-[11px]">
+                Order: {parsed.proposedAction.orderNumber} &bull; {parsed.proposedAction.reason}
+              </p>
+            </div>
+          )}
+
+          {parsed.toolOutput && (
+            <div className="p-2 rounded bg-muted/40 font-mono text-[11px] text-muted-foreground overflow-x-auto">
+              <span className="font-semibold text-foreground/80">Tool Output: </span>
+              {JSON.stringify(parsed.toolOutput)}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    if (run.agentName === 'CRITIC') {
+      const requiresHuman = parsed.requiresHumanReview;
+      return (
+        <div className="space-y-2 pt-1 text-xs">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5 font-semibold">
+              <ShieldCheck className="w-3.5 h-3.5 text-primary" />
+              <span>Critic Score:</span>
+              <Badge
+                variant={(parsed.score ?? 0) >= 0.85 ? 'default' : 'destructive'}
+                className="font-mono text-[11px]"
+              >
+                {parsed.score != null ? parsed.score.toFixed(2) : 'N/A'}
+              </Badge>
+            </div>
+
+            <Badge
+              variant={requiresHuman ? 'outline' : 'default'}
+              className={
+                requiresHuman
+                  ? 'border-amber-500/40 text-amber-400 bg-amber-500/10 text-[10px]'
+                  : 'bg-emerald-600 text-white text-[10px]'
+              }
+            >
+              {requiresHuman ? 'Awaiting Human Approval' : 'Auto-Approved'}
+            </Badge>
+          </div>
+
+          {parsed.notes && (
+            <div className="p-2 rounded bg-muted/40 text-muted-foreground text-[11px] leading-relaxed">
+              <span className="font-semibold text-foreground/80">Evaluation Notes: </span>
+              {parsed.notes}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // Default fallback
+    return (
+      <div className="text-xs bg-muted/60 rounded p-2.5 font-mono overflow-x-auto text-muted-foreground">
+        {run.outputPayload}
+      </div>
+    );
   };
 
   return (
@@ -134,11 +310,11 @@ export function TicketDetailDialog({ ticket, open, onOpenChange }: TicketDetailD
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="agents" className="gap-2">
                 <Cpu className="w-4 h-4" />
-                <span>Agent Execution Runs ({agentRuns.length})</span>
+                <span>Multi-Agent Execution Pipeline ({agentRuns.length})</span>
               </TabsTrigger>
               <TabsTrigger value="events" className="gap-2">
                 <Activity className="w-4 h-4" />
-                <span>State Audit Log ({events.length})</span>
+                <span>State Transition Audit Log ({events.length})</span>
               </TabsTrigger>
             </TabsList>
 
@@ -150,7 +326,7 @@ export function TicketDetailDialog({ ticket, open, onOpenChange }: TicketDetailD
                 </div>
               ) : (
                 agentRuns.map((run) => (
-                  <div key={run.id} className="border rounded-lg p-3.5 bg-card/60 space-y-2">
+                  <div key={run.id} className="border rounded-lg p-3.5 bg-card/60 space-y-2.5">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <Bot className="w-4 h-4 text-primary" />
@@ -177,11 +353,8 @@ export function TicketDetailDialog({ ticket, open, onOpenChange }: TicketDetailD
                         </Badge>
                       </div>
                     </div>
-                    {run.outputPayload && (
-                      <div className="text-xs bg-muted/60 rounded p-2.5 font-mono overflow-x-auto text-muted-foreground">
-                        {run.outputPayload}
-                      </div>
-                    )}
+
+                    {renderAgentPayload(run)}
                   </div>
                 ))
               )}

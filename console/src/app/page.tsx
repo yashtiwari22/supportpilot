@@ -2,11 +2,13 @@
 
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { api, Ticket, UserDto, WorkflowState, getStoredUser } from '@/lib/api';
+import { api, Ticket, UserDto, WorkflowState, getStoredUser, ApprovalDto } from '@/lib/api';
 import { useEventSource } from '@/hooks/useEventSource';
 import { LoginCard } from '@/components/login-card';
 import { SimulatorModal } from '@/components/simulator-modal';
 import { TicketDetailDialog } from '@/components/ticket-detail-dialog';
+import { ApprovalQueueView } from '@/components/approval-queue-view';
+import { KnowledgeBaseView } from '@/components/knowledge-base-view';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,10 +26,14 @@ import {
   AlertCircle,
   FileQuestion,
   Layers,
+  ShieldAlert,
+  BookOpen,
+  LayoutGrid,
 } from 'lucide-react';
 
 export default function ConsoleDashboard() {
   const [currentUser, setCurrentUser] = useState<UserDto | null>(() => getStoredUser());
+  const [activeTab, setActiveTab] = useState<'board' | 'approvals' | 'kb'>('board');
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [simulatorOpen, setSimulatorOpen] = useState(false);
@@ -48,6 +54,13 @@ export default function ConsoleDashboard() {
         priority: priorityFilter !== 'ALL' ? priorityFilter : undefined,
         search: searchQuery ? searchQuery : undefined,
       }),
+    enabled: !!currentUser,
+  });
+
+  // Query pending approvals for badge count
+  const { data: pendingApprovals = [] } = useQuery<ApprovalDto[]>({
+    queryKey: ['pending-approvals'],
+    queryFn: () => api.approvals.listPending(),
     enabled: !!currentUser,
   });
 
@@ -142,6 +155,50 @@ export default function ConsoleDashboard() {
             </div>
           </div>
 
+          {/* Center Tabs Navigation */}
+          <nav className="hidden md:flex items-center gap-1 bg-muted/50 p-1 rounded-lg border">
+            <button
+              onClick={() => setActiveTab('board')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
+                activeTab === 'board'
+                  ? 'bg-background text-foreground shadow-xs'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <LayoutGrid className="w-3.5 h-3.5" />
+              <span>Live Board</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('approvals')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all relative ${
+                activeTab === 'approvals'
+                  ? 'bg-background text-foreground shadow-xs'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <ShieldAlert className="w-3.5 h-3.5 text-amber-500" />
+              <span>Approval Queue</span>
+              {pendingApprovals.length > 0 && (
+                <span className="ml-1 px-1.5 py-0.2 rounded-full text-[10px] bg-amber-500 text-black font-bold">
+                  {pendingApprovals.length}
+                </span>
+              )}
+            </button>
+
+            <button
+              onClick={() => setActiveTab('kb')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
+                activeTab === 'kb'
+                  ? 'bg-background text-foreground shadow-xs'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <BookOpen className="w-3.5 h-3.5 text-primary" />
+              <span>Knowledge Base</span>
+            </button>
+          </nav>
+
           <div className="flex items-center gap-3">
             {/* SSE Stream Status Indicator */}
             <div className="flex items-center gap-2 px-2.5 py-1 rounded-full border bg-card/60 text-xs">
@@ -163,7 +220,7 @@ export default function ConsoleDashboard() {
             <Button
               onClick={() => setSimulatorOpen(true)}
               size="sm"
-              className="gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-medium"
+              className="gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-medium shadow-md shadow-indigo-500/20"
             >
               <Sparkles className="w-3.5 h-3.5 text-amber-300 fill-current" />
               <span>Simulate Tickets</span>
@@ -187,139 +244,173 @@ export default function ConsoleDashboard() {
           </div>
         </div>
 
-        {/* Filter and Search Bar */}
-        <div className="flex flex-wrap items-center justify-between gap-3 pt-3 mt-3 border-t">
-          <div className="relative flex-1 max-w-sm">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search by subject, customer, email..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-8 h-9 text-xs"
-            />
-          </div>
-
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              <span>Category:</span>
-              <select
-                value={categoryFilter}
-                onChange={(e) => setCategoryFilter(e.target.value)}
-                className="bg-card border rounded-md text-xs px-2 py-1 text-foreground"
-              >
-                <option value="ALL">All Categories</option>
-                <option value="BILLING">Billing</option>
-                <option value="ORDER_INQUIRY">Order Inquiry</option>
-                <option value="TECHNICAL">Technical</option>
-                <option value="GENERAL">General</option>
-              </select>
-            </div>
-
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              <span>Priority:</span>
-              <select
-                value={priorityFilter}
-                onChange={(e) => setPriorityFilter(e.target.value)}
-                className="bg-card border rounded-md text-xs px-2 py-1 text-foreground"
-              >
-                <option value="ALL">All Priorities</option>
-                <option value="URGENT">Urgent</option>
-                <option value="HIGH">High</option>
-                <option value="MEDIUM">Medium</option>
-                <option value="LOW">Low</option>
-              </select>
-            </div>
-          </div>
+        {/* Mobile Navigation Tabs */}
+        <div className="flex md:hidden items-center justify-around gap-1 mt-3 pt-3 border-t">
+          <button
+            onClick={() => setActiveTab('board')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold ${
+              activeTab === 'board' ? 'bg-primary/10 text-primary' : 'text-muted-foreground'
+            }`}
+          >
+            <LayoutGrid className="w-3.5 h-3.5" />
+            <span>Board</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('approvals')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold relative ${
+              activeTab === 'approvals' ? 'bg-primary/10 text-primary' : 'text-muted-foreground'
+            }`}
+          >
+            <ShieldAlert className="w-3.5 h-3.5 text-amber-500" />
+            <span>Approvals ({pendingApprovals.length})</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('kb')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold ${
+              activeTab === 'kb' ? 'bg-primary/10 text-primary' : 'text-muted-foreground'
+            }`}
+          >
+            <BookOpen className="w-3.5 h-3.5 text-primary" />
+            <span>Knowledge Base</span>
+          </button>
         </div>
+
+        {/* Filter and Search Bar (Active only on Board tab) */}
+        {activeTab === 'board' && (
+          <div className="flex flex-wrap items-center justify-between gap-3 pt-3 mt-3 border-t">
+            <div className="relative flex-1 max-w-sm">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search by subject, customer, email..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-8 h-9 text-xs"
+              />
+            </div>
+
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <span>Category:</span>
+                <select
+                  value={categoryFilter}
+                  onChange={(e) => setCategoryFilter(e.target.value)}
+                  className="bg-card border rounded-md text-xs px-2 py-1 text-foreground"
+                >
+                  <option value="ALL">All Categories</option>
+                  <option value="BILLING">Billing</option>
+                  <option value="ORDER_INQUIRY">Order Inquiry</option>
+                  <option value="TECHNICAL">Technical</option>
+                  <option value="GENERAL">General</option>
+                </select>
+              </div>
+
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <span>Priority:</span>
+                <select
+                  value={priorityFilter}
+                  onChange={(e) => setPriorityFilter(e.target.value)}
+                  className="bg-card border rounded-md text-xs px-2 py-1 text-foreground"
+                >
+                  <option value="ALL">All Priorities</option>
+                  <option value="URGENT">Urgent</option>
+                  <option value="HIGH">High</option>
+                  <option value="MEDIUM">Medium</option>
+                  <option value="LOW">Low</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        )}
       </header>
 
-      {/* Main Kanban Board Canvas */}
-      <main className="flex-1 p-6 overflow-x-auto bg-muted/20">
-        <div className="flex gap-4 min-w-[1200px] h-[calc(100vh-170px)]">
-          {columns.map((col) => {
-            const colTickets = tickets.filter((t) => col.states.includes(t.status));
-            const ColIcon = col.icon;
+      {/* Main Content Area */}
+      <main className="flex-1 p-6 overflow-x-auto">
+        {activeTab === 'board' && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 min-w-[1100px]">
+            {columns.map((col) => {
+              const colTickets = tickets.filter((t) => col.states.includes(t.status));
+              const ColIcon = col.icon;
 
-            return (
-              <div
-                key={col.title}
-                className="flex-1 flex flex-col rounded-xl border border-border/80 bg-card/60 backdrop-blur overflow-hidden"
-              >
-                {/* Column Header */}
-                <div className="p-3.5 border-b flex items-center justify-between bg-muted/30">
-                  <div className="flex items-center gap-2">
-                    <ColIcon className={`w-4 h-4 ${col.color}`} />
-                    <h2 className="text-xs font-bold uppercase tracking-wider text-foreground">
-                      {col.title}
-                    </h2>
-                  </div>
-                  <Badge variant="secondary" className="text-xs font-mono font-semibold px-2 py-0">
-                    {colTickets.length}
-                  </Badge>
-                </div>
-
-                {/* Column Body / Tickets List */}
-                <div className="flex-1 p-3 overflow-y-auto space-y-3">
-                  {colTickets.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center h-36 border border-dashed rounded-lg text-muted-foreground text-xs p-4 text-center">
-                      <FileQuestion className="w-6 h-6 mb-1 opacity-50" />
-                      <span>No tickets in this stage</span>
+              return (
+                <div key={col.title} className="flex flex-col rounded-xl border bg-card/40 p-3 shadow-xs">
+                  {/* Column Header */}
+                  <div className="flex items-center justify-between pb-3 mb-3 border-b">
+                    <div className="flex items-center gap-2">
+                      <div className={`p-1 rounded-md border ${col.color}`}>
+                        <ColIcon className="w-3.5 h-3.5" />
+                      </div>
+                      <span className="font-semibold text-xs tracking-tight">{col.title}</span>
                     </div>
-                  ) : (
-                    colTickets.map((ticket) => (
-                      <Card
-                        key={ticket.id}
-                        onClick={() => {
-                          setSelectedTicket(ticket);
-                          setDetailOpen(true);
-                        }}
-                        className="cursor-pointer border-border/70 hover:border-primary/60 transition-all hover:shadow-lg bg-card/90 group"
-                      >
-                        <CardContent className="p-3.5 space-y-2.5">
-                          <div className="flex items-center justify-between gap-2">
-                            <div className="flex items-center gap-1.5">
+                    <Badge variant="secondary" className="font-mono text-[10px] px-1.5">
+                      {colTickets.length}
+                    </Badge>
+                  </div>
+
+                  {/* Ticket Cards */}
+                  <div className="space-y-2.5 flex-1 overflow-y-auto max-h-[calc(100vh-230px)] pr-1">
+                    {colTickets.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center py-10 text-center text-muted-foreground/60">
+                        <FileQuestion className="w-6 h-6 stroke-1 mb-1.5" />
+                        <span className="text-xs">No tickets</span>
+                      </div>
+                    ) : (
+                      colTickets.map((ticket) => (
+                        <Card
+                          key={ticket.id}
+                          onClick={() => {
+                            setSelectedTicket(ticket);
+                            setDetailOpen(true);
+                          }}
+                          className="cursor-pointer hover:border-primary/50 hover:shadow-md transition-all duration-150 bg-card border-border/60 group"
+                        >
+                          <CardContent className="p-3 space-y-2">
+                            <div className="flex items-start justify-between gap-1.5">
+                              <h3 className="font-semibold text-xs leading-snug line-clamp-2 group-hover:text-primary transition-colors">
+                                {ticket.subject}
+                              </h3>
                               {getSentimentDot(ticket.sentiment)}
-                              {ticket.category ? (
-                                <span className="text-[10px] font-semibold tracking-wider uppercase text-muted-foreground">
-                                  {ticket.category.replace('_', ' ')}
-                                </span>
-                              ) : (
-                                <span className="text-[10px] text-muted-foreground italic">Triaging...</span>
-                              )}
                             </div>
-                            {getPriorityBadge(ticket.priority)}
-                          </div>
 
-                          <h3 className="text-xs font-semibold text-foreground line-clamp-2 leading-snug group-hover:text-primary transition-colors">
-                            {ticket.subject}
-                          </h3>
+                            <p className="text-[11px] text-muted-foreground line-clamp-2 leading-relaxed">
+                              {ticket.body}
+                            </p>
 
-                          <p className="text-[11px] text-muted-foreground line-clamp-2 leading-relaxed">
-                            {ticket.body}
-                          </p>
+                            <div className="flex items-center justify-between pt-1 border-t border-border/40 text-[10px] text-muted-foreground">
+                              <div className="flex items-center gap-1 truncate max-w-[110px]">
+                                <User className="w-3 h-3 shrink-0" />
+                                <span className="truncate">{ticket.customerName || ticket.customerEmail}</span>
+                              </div>
+                              <div className="flex items-center gap-1 shrink-0">
+                                <Clock className="w-3 h-3" />
+                                <span>{new Date(ticket.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                              </div>
+                            </div>
 
-                          <div className="flex items-center justify-between pt-2 border-t text-[10px] text-muted-foreground">
-                            <span className="flex items-center gap-1 truncate max-w-[130px]">
-                              <User className="w-3 h-3 flex-shrink-0" />
-                              <span className="truncate">{ticket.customerName}</span>
-                            </span>
-                            <span className="flex items-center gap-1">
-                              <Clock className="w-3 h-3" />
-                              <span>{new Date(ticket.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                            </span>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))
-                  )}
+                            <div className="flex items-center justify-between gap-1 pt-0.5">
+                              {ticket.category ? (
+                                <Badge variant="outline" className="text-[9px] px-1 py-0 uppercase">
+                                  {ticket.category}
+                                </Badge>
+                              ) : <span />}
+                              {getPriorityBadge(ticket.priority)}
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))
+                    )}
+                  </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )}
+
+        {activeTab === 'approvals' && <ApprovalQueueView />}
+
+        {activeTab === 'kb' && <KnowledgeBaseView />}
       </main>
 
-      {/* Ticket Detail Dialog */}
+      {/* Ticket Details & Audit Drawer */}
       <TicketDetailDialog
         ticket={selectedTicket}
         open={detailOpen}
@@ -330,7 +421,8 @@ export default function ConsoleDashboard() {
       <SimulatorModal
         open={simulatorOpen}
         onOpenChange={setSimulatorOpen}
-        tenantId={currentUser?.tenantId}
+        tenantId={currentUser.tenantId}
+        onGenerated={() => refetch()}
       />
     </div>
   );

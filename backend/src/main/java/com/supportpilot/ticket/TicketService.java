@@ -11,6 +11,7 @@ import com.supportpilot.queue.TicketQueue;
 import com.supportpilot.sse.SseHub;
 import com.supportpilot.workflow.TicketEvent;
 import com.supportpilot.workflow.TicketEventRepository;
+import com.supportpilot.workflow.WorkflowOrchestrator;
 import com.supportpilot.workflow.WorkflowState;
 import com.supportpilot.workflow.WorkflowStateMachine;
 import org.slf4j.Logger;
@@ -37,6 +38,7 @@ public class TicketService {
     private final TicketQueue ticketQueue;
     private final WorkflowStateMachine stateMachine;
     private final TriageAgent triageAgent;
+    private final WorkflowOrchestrator workflowOrchestrator;
     private final SseHub sseHub;
     private final ObjectMapper objectMapper;
 
@@ -47,6 +49,7 @@ public class TicketService {
             TicketQueue ticketQueue,
             WorkflowStateMachine stateMachine,
             TriageAgent triageAgent,
+            WorkflowOrchestrator workflowOrchestrator,
             SseHub sseHub,
             ObjectMapper objectMapper) {
         this.ticketRepository = ticketRepository;
@@ -55,6 +58,7 @@ public class TicketService {
         this.ticketQueue = ticketQueue;
         this.stateMachine = stateMachine;
         this.triageAgent = triageAgent;
+        this.workflowOrchestrator = workflowOrchestrator;
         this.sseHub = sseHub;
         this.objectMapper = objectMapper;
     }
@@ -157,6 +161,11 @@ public class TicketService {
 
         log.info("Successfully triaged ticket {}: Category={}, Priority={}, Sentiment={}",
                 ticket.getId(), ticket.getCategory(), ticket.getPriority(), ticket.getSentiment());
+
+        // Launch full multi-agent pipeline (ResolutionAgent || ActionAgent -> CriticAgent -> Auto/Human Approval)
+        if (agentResult.payload() instanceof TriageResult triageResult) {
+            workflowOrchestrator.executeMultiAgentPipeline(ticket.getId(), triageResult);
+        }
     }
 
     public List<TicketResponse> listTickets(UUID tenantId, WorkflowState status, String priority, String category, String search) {

@@ -17,10 +17,9 @@ public class LlmClientFactory {
     public LlmClient primaryLlmClient(
             @Value("${supportpilot.llm.provider:mock}") String provider,
             ApplicationContext context) {
-        if ("mock".equalsIgnoreCase(provider)) {
-            return context.getBean("mockLlmClient", LlmClient.class);
+        if ("gemini".equalsIgnoreCase(provider)) {
+            return context.getBean("geminiLlmClient", LlmClient.class);
         }
-        // Fallback to mock if configured provider bean is missing
         return context.getBean("mockLlmClient", LlmClient.class);
     }
 }

@@ -184,6 +184,52 @@ export const api = {
     },
   },
 
+  approvals: {
+    listPending: async (): Promise<ApprovalDto[]> => {
+      return request<ApprovalDto[]>('/api/v1/approvals');
+    },
+
+    approve: async (id: string, notes?: string): Promise<void> => {
+      await request<void>(`/api/v1/approvals/${id}/approve`, {
+        method: 'POST',
+        body: JSON.stringify({ notes }),
+      });
+    },
+
+    editAndApprove: async (id: string, editedReply: string, notes?: string): Promise<void> => {
+      await request<void>(`/api/v1/approvals/${id}/edit-and-approve`, {
+        method: 'POST',
+        body: JSON.stringify({ editedReply, notes }),
+      });
+    },
+
+    reject: async (id: string, reason?: string): Promise<void> => {
+      await request<void>(`/api/v1/approvals/${id}/reject`, {
+        method: 'POST',
+        body: JSON.stringify({ reason }),
+      });
+    },
+  },
+
+  kb: {
+    listArticles: async (): Promise<KbArticleSummary[]> => {
+      return request<KbArticleSummary[]>('/api/v1/kb/articles');
+    },
+
+    createArticle: async (req: CreateArticleRequest): Promise<unknown> => {
+      return request<unknown>('/api/v1/kb/articles', {
+        method: 'POST',
+        body: JSON.stringify(req),
+      });
+    },
+
+    deleteArticle: async (id: string): Promise<void> => {
+      await request<void>(`/api/v1/kb/articles/${id}`, {
+        method: 'DELETE',
+      });
+    },
+  },
+
   demo: {
     generateTickets: async (count: number = 3, tenantId?: string): Promise<Ticket[]> => {
       return request<Ticket[]>('/api/v1/demo/generate-tickets', {
@@ -193,3 +239,29 @@ export const api = {
     },
   },
 };
+
+export interface ApprovalDto {
+  id: string;
+  ticketId: string;
+  customerName: string;
+  customerEmail: string;
+  ticketSubject: string;
+  proposedReply: string;
+  proposedAction?: string;
+  criticNotes?: string;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  createdAt: string;
+}
+
+export interface KbArticleSummary {
+  id: string;
+  title: string;
+  slug: string;
+  chunkCount: number;
+  createdAt: string;
+}
+
+export interface CreateArticleRequest {
+  title: string;
+  content: string;
+}

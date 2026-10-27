@@ -17,9 +17,10 @@ interface SimulatorModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   tenantId?: string;
+  onGenerated?: () => void;
 }
 
-export function SimulatorModal({ open, onOpenChange, tenantId }: SimulatorModalProps) {
+export function SimulatorModal({ open, onOpenChange, tenantId, onGenerated }: SimulatorModalProps) {
   const [ticketCount, setTicketCount] = useState<number>(3);
   const queryClient = useQueryClient();
 
@@ -27,6 +28,7 @@ export function SimulatorModal({ open, onOpenChange, tenantId }: SimulatorModalP
     mutationFn: () => api.demo.generateTickets(ticketCount, tenantId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tickets'] });
+      onGenerated?.();
       onOpenChange(false);
     },
   });
