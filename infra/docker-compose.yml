@@ -1,0 +1,24 @@
+name: supportpilot
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: supportpilot-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: supportpilot
+      POSTGRES_USER: supportpilot
+      POSTGRES_PASSWORD: supportpilot_secret
+    ports:
+      - "${DB_PORT:-5434}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U supportpilot -d supportpilot"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
+    driver: local
