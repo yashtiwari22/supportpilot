@@ -60,10 +60,17 @@
 - **Decision:** Implement an in-memory Token Bucket rate limiter per tenant (`TenantRateLimiter`), enforced via `RateLimitFilter` on ticket ingestion (`POST /api/v1/tickets`). Returns RFC-standard `X-RateLimit-*` and `Retry-After` headers and rejects exceeding requests with HTTP 429.
 - **Consequences:** Strict tenant noisy-neighbor isolation and predictable LLM token consumption.
 
-## ADR-011: Poison-Pill Dead-Letter Queue & Idempotent Redrive Pattern
+## ADR-012: JVM Memory Tuning for 512MB RAM Container Constraints
 - **Status:** Accepted
-- **Context:** Corrupted payloads or jobs that repeatedly fail after maximum retries must not permanently block consumers or be silently discarded.
-- **Decision:** Route poisoned and retry-exhausted jobs to a designated `DEAD_LETTER` state and Kafka DLQ topic (`supportpilot.tickets.dlq`). Provide REST endpoints (`/api/v1/queue/redrive/{id}` and `/api/v1/queue/redrive-all`) and an interactive Console UI to inspect errors and redrive jobs safely.
-- **Consequences:** Guaranteed message durability, zero unhandled poison pills, and self-service operational recovery.
+- **Context:** Free cloud hosting platforms (such as Render Free Web Service) strictly enforce a 512MB physical RAM limit. Default HotSpot JVM configurations (or ZGC) consume excess native memory and metadata overhead, triggering the Linux cgroup Out-Of-Memory (OOM) killer.
+- **Decision:** Configure Java 21 container runtime flags: `-XX:+UseSerialGC -XX:MaxRAMPercentage=70.0 -XX:+ExitOnOutOfMemoryError`. Serial GC minimizes GC thread memory structures and metadata overhead, leaving ample native memory for Tomcat and Hibernate buffers while bounding heap to ~350MB.
+- **Consequences:** Reliable zero-crash operation inside low-memory containers without OOM kills.
+
+## ADR-013: Consolidated Telemetry and Evaluation Console Integration
+- **Status:** Accepted
+- **Context:** Operations and AI engineers require unified observability over agent latencies, token consumption, queue depth, and golden benchmark quality metrics without leaving the primary staff console.
+- **Decision:** Expose authenticated endpoints `/api/v1/metrics/summary` and `/api/v1/eval/results` on the backend, consumed by dedicated `MetricsView` and `EvaluationView` tabs in the Next.js console with auto-refreshing TanStack Query polling.
+- **Consequences:** Single-pane-of-glass observability bridging traditional system metrics (queue depth, DLQ size) and generative AI telemetry (token counts, agent durations, precision/grounding rates).
+
 
 

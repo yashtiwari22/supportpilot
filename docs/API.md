@@ -187,3 +187,18 @@ Prometheus metrics scrape target including:
 - `supportpilot_ratelimit_rejected_total`
 - `supportpilot_queue_dlq_size`
 
+#### `GET /api/v1/metrics/summary`
+Retrieve aggregated system, queue, and AI agent performance metrics for the authenticated tenant:
+- Total tickets, active queue depth, DLQ count, rate limit rejections
+- Ticket distribution by workflow state
+- Per-agent performance: average latency (ms), token volume, and estimated LLM costs
+
+#### `GET /api/v1/eval/results`
+Retrieve the latest golden dataset automated evaluation benchmark report:
+- Triage category classification accuracy
+- Deterministic tool action precision
+- Critic safety gate human-approval accuracy
+- End-to-end latency p50 and p95 percentiles
+- Individual test case results with ground truth comparisons
+
+

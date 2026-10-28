@@ -262,6 +262,18 @@ export const api = {
       });
     },
   },
+
+  metrics: {
+    getSummary: async (): Promise<MetricsSummaryDto> => {
+      return request<MetricsSummaryDto>('/api/v1/metrics/summary');
+    },
+  },
+
+  eval: {
+    getResults: async (): Promise<EvalBenchmarkDto> => {
+      return request<EvalBenchmarkDto>('/api/v1/eval/results');
+    },
+  },
 };
 
 export interface DeadLetterJob {
@@ -300,4 +312,40 @@ export interface KbArticleSummary {
 export interface CreateArticleRequest {
   title: string;
   content: string;
+}
+
+export interface AgentMetricDto {
+  agentName: string;
+  totalRuns: number;
+  averageDurationMs: number;
+  totalTokens: number;
+  totalCostUsd: number;
+}
+
+export interface MetricsSummaryDto {
+  totalTickets: number;
+  queueDepth: number;
+  deadLetterCount: number;
+  ticketsByState: Record<string, number>;
+  agentMetrics: AgentMetricDto[];
+  rateLimitRejections: number;
+}
+
+export interface EvalBenchmarkDto {
+  timestamp: string;
+  totalTests: number;
+  triageAccuracy: number;
+  actionPrecision: number;
+  criticGateAccuracy: number;
+  citationGroundingRate: number;
+  latencyP50Ms: number;
+  latencyP95Ms: number;
+  testCases: Array<{
+    id: string;
+    name: string;
+    category: string;
+    status: string;
+    latencyMs: number;
+    passed: boolean;
+  }>;
 }

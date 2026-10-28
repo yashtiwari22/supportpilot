@@ -40,4 +40,9 @@ public interface TicketRepository extends JpaRepository<Ticket, UUID> {
     );
 
     List<Ticket> findByTenantIdOrderByCreatedAtDesc(UUID tenantId);
+
+    @Query("SELECT t.status, COUNT(t) FROM Ticket t WHERE t.tenantId = :tenantId GROUP BY t.status")
+    List<Object[]> countByStatusForTenant(@Param("tenantId") UUID tenantId);
+
+    long countByTenantId(UUID tenantId);
 }

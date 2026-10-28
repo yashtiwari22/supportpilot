@@ -10,6 +10,8 @@ import { TicketDetailDialog } from '@/components/ticket-detail-dialog';
 import { ApprovalQueueView } from '@/components/approval-queue-view';
 import { KnowledgeBaseView } from '@/components/knowledge-base-view';
 import { DeadLetterQueueView } from '@/components/dead-letter-queue-view';
+import { MetricsView } from '@/components/metrics-view';
+import { EvaluationView } from '@/components/evaluation-view';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -31,6 +33,8 @@ import {
   BookOpen,
   LayoutGrid,
   Skull,
+  BarChart3,
+  Award,
 } from 'lucide-react';
 
 function subscribeStorage(callback: () => void) {
@@ -56,7 +60,7 @@ export default function ConsoleDashboard() {
     () => false
   );
 
-  const [activeTab, setActiveTab] = useState<'board' | 'approvals' | 'kb' | 'dlq'>('board');
+  const [activeTab, setActiveTab] = useState<'board' | 'approvals' | 'kb' | 'dlq' | 'metrics' | 'eval'>('board');
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [simulatorOpen, setSimulatorOpen] = useState(false);
@@ -254,6 +258,30 @@ export default function ConsoleDashboard() {
                 </span>
               )}
             </button>
+
+            <button
+              onClick={() => setActiveTab('metrics')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
+                activeTab === 'metrics'
+                  ? 'bg-background text-foreground shadow-xs'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <BarChart3 className="w-3.5 h-3.5 text-blue-400" />
+              <span>Metrics</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('eval')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
+                activeTab === 'eval'
+                  ? 'bg-background text-foreground shadow-xs'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <Award className="w-3.5 h-3.5 text-indigo-400" />
+              <span>Evaluation</span>
+            </button>
           </nav>
 
           <div className="flex items-center gap-3">
@@ -338,6 +366,24 @@ export default function ConsoleDashboard() {
           >
             <Skull className="w-3.5 h-3.5 text-destructive" />
             <span>DLQ ({(queueStats?.deadLetterCount ?? 0)})</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('metrics')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold ${
+              activeTab === 'metrics' ? 'bg-primary/10 text-primary' : 'text-muted-foreground'
+            }`}
+          >
+            <BarChart3 className="w-3.5 h-3.5 text-blue-400" />
+            <span>Metrics</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('eval')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold ${
+              activeTab === 'eval' ? 'bg-primary/10 text-primary' : 'text-muted-foreground'
+            }`}
+          >
+            <Award className="w-3.5 h-3.5 text-indigo-400" />
+            <span>Evaluation</span>
           </button>
         </div>
 
@@ -476,6 +522,10 @@ export default function ConsoleDashboard() {
         {activeTab === 'kb' && <KnowledgeBaseView />}
 
         {activeTab === 'dlq' && <DeadLetterQueueView />}
+
+        {activeTab === 'metrics' && <MetricsView />}
+
+        {activeTab === 'eval' && <EvaluationView />}
       </main>
 
       {/* Ticket Details & Audit Drawer */}

@@ -12,4 +12,12 @@ import java.util.UUID;
 @Repository
 public interface AgentRunRepository extends JpaRepository<AgentRun, UUID> {
     List<AgentRun> findByTicketIdOrderByCreatedAtAsc(UUID ticketId);
+
+    @org.springframework.data.jpa.repository.Query("""
+        SELECT r.agentName, COUNT(r), AVG(r.durationMs), SUM(r.promptTokens + r.completionTokens), SUM(r.estimatedCostUsd)
+        FROM AgentRun r
+        WHERE r.tenantId = :tenantId
+        GROUP BY r.agentName
+    """)
+    List<Object[]> getAgentPerformanceSummary(@org.springframework.data.repository.query.Param("tenantId") UUID tenantId);
 }

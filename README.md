@@ -117,6 +117,8 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
    - **Approval Queue:** Human-in-the-loop review station displaying agent-proposed replies, financial actions, and critic evaluation notes with one-click **Approve** and **Reject**.
    - **Knowledge Base:** Article search, category tags, and pgvector chunk inspector.
    - **Dead-Letter Queue:** Dead-lettered poison pill jobs with retry attempt counters, failure reasons, and single/bulk **Redrive** actions.
+   - **System & AI Metrics:** Live telemetry on queue depth, per-agent latencies (ms), token volume, and estimated LLM costs.
+   - **Evaluation Benchmarks:** Golden dataset accuracy, deterministic tool precision, and reflection guardrail verification.
 3. **Simulate Ingestion Tickets:**
    - Click the purple **"Simulate Tickets"** button in the header.
    - Select **3 Tickets** and click **Run Simulator**.
@@ -145,9 +147,10 @@ Detailed instructions and options are documented in [`loadtests/README.md`](load
 
 SupportPilot is designed to run entirely on zero-cost free cloud tiers:
 - **Database:** Neon PostgreSQL Serverless (Free Tier with pgvector).
-- **Backend:** Render Web Service (Free Tier Docker deployment via [`render.yaml`](render.yaml)).
+- **Backend:** Render Web Service (Free Tier Docker deployment via [`render.yaml`](render.yaml)). Tuned with `-XX:+UseSerialGC -XX:MaxRAMPercentage=70.0 -XX:+ExitOnOutOfMemoryError` for 512MB RAM bounds.
 - **Frontend:** Vercel Edge (Free Hobby Tier deployment via [`console/vercel.json`](console/vercel.json)).
 - **LLM:** Google Gemini 1.5 Flash (Free Tier with 15 RPM).
+- **CI / CD:** GitHub Actions workflow ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) testing full Maven test suite, pgvector service, Vitest component tests, ESLint, and Next.js standalone build.
 
 See [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) for the complete step-by-step setup guide.
 
@@ -156,7 +159,9 @@ See [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) for the complete step-by-step set
 ## Documentation
 
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — Hexagonal design, state transitions, agent pipeline, and concurrency.
-- [docs/DECISIONS.md](docs/DECISIONS.md) — Architectural Decision Records (ADRs 001–011).
+- [docs/DECISIONS.md](docs/DECISIONS.md) — Architectural Decision Records (ADRs 001–013).
+- [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md) — 3-Minute end-to-end walkthrough script for reviewers.
+- [docs/LIMITATIONS.md](docs/LIMITATIONS.md) — Transparent technical trade-offs, cold-starts, and scaling roadmap.
 - [docs/API.md](docs/API.md) — REST API endpoints, API Key authentication, SSE specifications, and DLQ APIs.
 - [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) — $0 Cloud deployment walkthrough.
 - [docs/EVAL_REPORT.md](docs/EVAL_REPORT.md) — Golden dataset evaluation report and metrics.
