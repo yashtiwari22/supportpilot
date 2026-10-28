@@ -69,6 +69,11 @@ public class QueueJob {
         this.updatedAt = Instant.now();
     }
 
+    public QueueJob(UUID id, String queueName, String payload, int maxRetries) {
+        this(queueName, payload, maxRetries);
+        this.id = id;
+    }
+
     @PreUpdate
     public void onUpdate() {
         this.updatedAt = Instant.now();
@@ -152,5 +157,9 @@ public class QueueJob {
 
     public Instant getUpdatedAt() {
         return updatedAt;
+    }
+
+    public void setUpdatedAt(Instant updatedAt) {
+        this.updatedAt = updatedAt;
     }
 }

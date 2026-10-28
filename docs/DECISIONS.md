@@ -48,3 +48,22 @@
 - **Decision:** Utilize Java 21+ Virtual Threads with `CompletableFuture.supplyAsync` in `WorkflowOrchestrator` to fan out `ResolutionAgent` (retrieval + drafting) and `ActionAgent` (order lookup + eligibility evaluation) concurrently.
 - **Consequences:** Wall-clock resolution latency drops to $\max(T_{\text{rag}}, T_{\text{tools}})$, while virtual thread concurrency scales with negligible memory overhead compared to OS threads.
 
+## ADR-009: Pluggable Dual-Queue Architecture (Kafka vs Postgres SKIP LOCKED)
+- **Status:** Accepted
+- **Context:** Development and test environments require $0 zero-external-broker operation, while scaled production demands distributed partitioning, consumer groups, and horizontal worker scaling.
+- **Decision:** Build a Hexagonal `TicketQueue` port with two conditional adapters: `PostgresTicketQueue` (using row-level `SKIP LOCKED` polling, default) and `KafkaTicketQueue` (publishing to partitioned Kafka topics, keyed by `tenantId`). Configured via `supportpilot.queue.type=postgres|kafka`.
+- **Consequences:** Zero-broker local bootstrapping and CI testing with zero Docker baggage, with an instant single-line environment flag switch to Kafka for high-throughput deployments.
+
+## ADR-010: Token-Bucket Multi-Tenant Ingestion Rate Limiting
+- **Status:** Accepted
+- **Context:** In multi-tenant environments, a single rogue client or DDoS ingestion spike can exhaust system resources and starve other tenants.
+- **Decision:** Implement an in-memory Token Bucket rate limiter per tenant (`TenantRateLimiter`), enforced via `RateLimitFilter` on ticket ingestion (`POST /api/v1/tickets`). Returns RFC-standard `X-RateLimit-*` and `Retry-After` headers and rejects exceeding requests with HTTP 429.
+- **Consequences:** Strict tenant noisy-neighbor isolation and predictable LLM token consumption.
+
+## ADR-011: Poison-Pill Dead-Letter Queue & Idempotent Redrive Pattern
+- **Status:** Accepted
+- **Context:** Corrupted payloads or jobs that repeatedly fail after maximum retries must not permanently block consumers or be silently discarded.
+- **Decision:** Route poisoned and retry-exhausted jobs to a designated `DEAD_LETTER` state and Kafka DLQ topic (`supportpilot.tickets.dlq`). Provide REST endpoints (`/api/v1/queue/redrive/{id}` and `/api/v1/queue/redrive-all`) and an interactive Console UI to inspect errors and redrive jobs safely.
+- **Consequences:** Guaranteed message durability, zero unhandled poison pills, and self-service operational recovery.
+
+

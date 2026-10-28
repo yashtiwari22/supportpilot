@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,6 +18,7 @@ import java.util.UUID;
  * PostgreSQL implementation of TicketQueue using SKIP LOCKED row-level locking.
  */
 @Service
+@ConditionalOnProperty(name = "supportpilot.queue.type", havingValue = "postgres", matchIfMissing = true)
 public class PostgresTicketQueue implements TicketQueue {
 
     private static final Logger log = LoggerFactory.getLogger(PostgresTicketQueue.class);

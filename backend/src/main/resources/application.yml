@@ -49,10 +49,18 @@ supportpilot:
       api-key: ${GEMINI_API_KEY:}
       model: ${GEMINI_MODEL:gemini-1.5-flash}
   queue:
+    type: ${QUEUE_TYPE:postgres}
     concurrency: ${QUEUE_CONCURRENCY:4}
     poll-interval-ms: ${QUEUE_POLL_INTERVAL_MS:500}
     visibility-timeout-seconds: ${QUEUE_VISIBILITY_TIMEOUT_SECONDS:60}
     max-retries: 3
+    kafka:
+      bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+      topic-tickets: ${KAFKA_TOPIC_TICKETS:supportpilot.tickets}
+      group-id: ${KAFKA_GROUP_ID:supportpilot-workers}
+  ratelimit:
+    enabled: true
+    requests-per-minute: ${RATE_LIMIT_PER_MINUTE:60}
 
 management:
   endpoints:

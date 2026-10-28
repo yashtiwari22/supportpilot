@@ -6,6 +6,7 @@ import jakarta.annotation.PreDestroy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 import java.net.InetAddress;
@@ -19,6 +20,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * Background consumer leveraging Java 21/25 Virtual Threads to process queued ticket jobs.
  */
 @Component
+@ConditionalOnProperty(name = "supportpilot.queue.type", havingValue = "postgres", matchIfMissing = true)
 public class QueueWorker {
 
     private static final Logger log = LoggerFactory.getLogger(QueueWorker.class);

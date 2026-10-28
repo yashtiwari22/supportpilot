@@ -33,6 +33,9 @@ public class ApprovalService {
     private final SseHub sseHub;
     private final ObjectMapper objectMapper;
 
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private com.supportpilot.metrics.SupportPilotMetrics metrics;
+
     public record ApprovalDto(
             UUID id,
             UUID ticketId,
@@ -107,6 +110,10 @@ public class ApprovalService {
                 "recipient", ticket.getCustomerEmail()
         ));
 
+        if (metrics != null) {
+            metrics.recordTicketResolved(ticket.getTenantId(), "APPROVED");
+        }
+
         log.info("Approval {} approved for ticket {}", approvalId, ticket.getId());
     }
 
@@ -136,6 +143,10 @@ public class ApprovalService {
                 "recipient", ticket.getCustomerEmail()
         ));
 
+        if (metrics != null) {
+            metrics.recordTicketResolved(ticket.getTenantId(), "EDITED_AND_APPROVED");
+        }
+
         log.info("Approval {} edited and approved for ticket {}", approvalId, ticket.getId());
     }
 
@@ -157,6 +168,10 @@ public class ApprovalService {
                 "reviewerId", reviewerId != null ? reviewerId.toString() : "system",
                 "reason", reason != null ? reason : ""
         ));
+
+        if (metrics != null) {
+            metrics.recordTicketResolved(ticket.getTenantId(), "REJECTED");
+        }
 
         log.info("Approval {} rejected for ticket {}: {}", approvalId, ticket.getId(), reason);
     }

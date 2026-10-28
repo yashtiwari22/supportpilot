@@ -27,4 +27,8 @@ public interface QueueJobRepository extends JpaRepository<QueueJob, UUID> {
         FOR UPDATE SKIP LOCKED
     """, nativeQuery = true)
     Optional<QueueJob> findNextAvailableJobForUpdate(@Param("queueName") String queueName);
+
+    long countByStatus(QueueJob.Status status);
+
+    java.util.List<QueueJob> findTop100ByStatusOrderByCreatedAtDesc(QueueJob.Status status);
 }

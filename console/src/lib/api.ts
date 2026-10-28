@@ -92,6 +92,7 @@ export function clearToken() {
   if (typeof window !== 'undefined') {
     localStorage.removeItem('sp_token');
     localStorage.removeItem('sp_user');
+    window.dispatchEvent(new Event('storage'));
   }
 }
 
@@ -104,6 +105,7 @@ export function getStoredUser(): UserDto | null {
 export function setStoredUser(user: UserDto) {
   if (typeof window !== 'undefined') {
     localStorage.setItem('sp_user', JSON.stringify(user));
+    window.dispatchEvent(new Event('storage'));
   }
 }
 
@@ -230,6 +232,28 @@ export const api = {
     },
   },
 
+  queue: {
+    listDeadLetters: async (): Promise<DeadLetterJob[]> => {
+      return request<DeadLetterJob[]>('/api/v1/queue/dead-letters');
+    },
+
+    getStats: async (): Promise<{ deadLetterCount: number }> => {
+      return request<{ deadLetterCount: number }>('/api/v1/queue/stats');
+    },
+
+    redriveJob: async (jobId: string): Promise<void> => {
+      await request<void>(`/api/v1/queue/redrive/${jobId}`, {
+        method: 'POST',
+      });
+    },
+
+    redriveAll: async (): Promise<{ redrivedCount: number }> => {
+      return request<{ redrivedCount: number }>('/api/v1/queue/redrive-all', {
+        method: 'POST',
+      });
+    },
+  },
+
   demo: {
     generateTickets: async (count: number = 3, tenantId?: string): Promise<Ticket[]> => {
       return request<Ticket[]>('/api/v1/demo/generate-tickets', {
@@ -239,6 +263,18 @@ export const api = {
     },
   },
 };
+
+export interface DeadLetterJob {
+  id: string;
+  queueName: string;
+  ticketId: string;
+  tenantId: string;
+  retryCount: number;
+  maxRetries: number;
+  errorMessage?: string;
+  createdAt: string;
+  updatedAt: string;
+}
 
 export interface ApprovalDto {
   id: string;

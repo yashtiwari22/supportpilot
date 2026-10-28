@@ -29,10 +29,15 @@ public class SecurityConfig {
 
     private final ApiKeyFilter apiKeyFilter;
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final com.supportpilot.ratelimit.RateLimitFilter rateLimitFilter;
 
-    public SecurityConfig(ApiKeyFilter apiKeyFilter, JwtAuthenticationFilter jwtAuthenticationFilter) {
+    public SecurityConfig(
+            ApiKeyFilter apiKeyFilter,
+            JwtAuthenticationFilter jwtAuthenticationFilter,
+            com.supportpilot.ratelimit.RateLimitFilter rateLimitFilter) {
         this.apiKeyFilter = apiKeyFilter;
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+        this.rateLimitFilter = rateLimitFilter;
     }
 
     @Bean
@@ -56,7 +61,8 @@ public class SecurityConfig {
                 .anyRequest().permitAll()
             )
             .addFilterBefore(apiKeyFilter, UsernamePasswordAuthenticationFilter.class)
-            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+            .addFilterAfter(rateLimitFilter, JwtAuthenticationFilter.class);
 
         return http.build();
     }
@@ -67,7 +73,10 @@ public class SecurityConfig {
         config.setAllowedOriginPatterns(List.of("*")); // For local development & Vercel previews
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
-        config.setExposedHeaders(List.of("Last-Event-ID", "Content-Disposition", "Idempotency-Key"));
+        config.setExposedHeaders(List.of(
+                "Last-Event-ID", "Content-Disposition", "Idempotency-Key",
+                "X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset", "Retry-After"
+        ));
         config.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();

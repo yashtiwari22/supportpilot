@@ -42,6 +42,9 @@ public class TicketService {
     private final SseHub sseHub;
     private final ObjectMapper objectMapper;
 
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private com.supportpilot.metrics.SupportPilotMetrics metrics;
+
     public TicketService(
             TicketRepository ticketRepository,
             TicketEventRepository ticketEventRepository,
@@ -100,6 +103,10 @@ public class TicketService {
         // 5. Broadcast SSE event to connected console clients
         TicketResponse response = TicketResponse.fromEntity(ticket);
         sseHub.broadcast(tenantId, "ticket_created", response);
+
+        if (metrics != null) {
+            metrics.recordTicketIngested(tenantId);
+        }
 
         log.info("Ingested and enqueued ticket {} for tenant {}", ticket.getId(), tenantId);
         return response;
@@ -213,6 +220,10 @@ public class TicketService {
             run.setOutputPayload(objectMapper.writeValueAsString(result.payload()));
             run.setErrorMessage(result.errorMessage());
             agentRunRepository.save(run);
+
+            if (metrics != null) {
+                metrics.recordAgentDuration(result.agentName().name(), result.success() ? "SUCCESS" : "FAILED", result.durationMs());
+            }
         } catch (Exception e) {
             log.error("Failed to record agent run for ticket {}", ticket.getId(), e);
         }

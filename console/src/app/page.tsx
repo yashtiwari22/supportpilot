@@ -1,14 +1,15 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useSyncExternalStore } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { api, Ticket, UserDto, WorkflowState, getStoredUser, ApprovalDto } from '@/lib/api';
+import { api, Ticket, UserDto, WorkflowState, ApprovalDto } from '@/lib/api';
 import { useEventSource } from '@/hooks/useEventSource';
 import { LoginCard } from '@/components/login-card';
 import { SimulatorModal } from '@/components/simulator-modal';
 import { TicketDetailDialog } from '@/components/ticket-detail-dialog';
 import { ApprovalQueueView } from '@/components/approval-queue-view';
 import { KnowledgeBaseView } from '@/components/knowledge-base-view';
+import { DeadLetterQueueView } from '@/components/dead-letter-queue-view';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -29,23 +30,39 @@ import {
   ShieldAlert,
   BookOpen,
   LayoutGrid,
+  Skull,
 } from 'lucide-react';
 
+function subscribeStorage(callback: () => void) {
+  if (typeof window === 'undefined') return () => {};
+  window.addEventListener('storage', callback);
+  return () => window.removeEventListener('storage', callback);
+}
+
+function getClientUserSnapshot(): string | null {
+  return typeof window !== 'undefined' ? localStorage.getItem('sp_user') : null;
+}
+
+function getServerUserSnapshot(): string | null {
+  return null;
+}
+
 export default function ConsoleDashboard() {
-  const [mounted, setMounted] = useState(false);
-  const [currentUser, setCurrentUser] = useState<UserDto | null>(null);
-  const [activeTab, setActiveTab] = useState<'board' | 'approvals' | 'kb'>('board');
+  const userSnapshot = useSyncExternalStore(subscribeStorage, getClientUserSnapshot, getServerUserSnapshot);
+  const currentUser: UserDto | null = userSnapshot ? JSON.parse(userSnapshot) : null;
+  const isHydrated = useSyncExternalStore(
+    subscribeStorage,
+    () => true,
+    () => false
+  );
+
+  const [activeTab, setActiveTab] = useState<'board' | 'approvals' | 'kb' | 'dlq'>('board');
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [simulatorOpen, setSimulatorOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('ALL');
   const [priorityFilter, setPriorityFilter] = useState<string>('ALL');
-
-  useEffect(() => {
-    setMounted(true);
-    setCurrentUser(getStoredUser());
-  }, []);
 
   // Real-time SSE connection with auto-reconnect and query invalidation
   const { status: sseStatus } = useEventSource({
@@ -70,7 +87,14 @@ export default function ConsoleDashboard() {
     enabled: !!currentUser,
   });
 
-  if (!mounted) {
+  // Query DLQ stats for poison pill counter
+  const { data: queueStats } = useQuery({
+    queryKey: ['dlq-stats'],
+    queryFn: () => api.queue.getStats(),
+    enabled: !!currentUser,
+  });
+
+  if (!isHydrated) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <div className="flex items-center gap-2.5 text-muted-foreground text-xs font-medium">
@@ -82,12 +106,11 @@ export default function ConsoleDashboard() {
   }
 
   if (!currentUser) {
-    return <LoginCard onSuccess={(user) => setCurrentUser(user)} />;
+    return <LoginCard />;
   }
 
   const handleLogout = () => {
     api.auth.logout();
-    setCurrentUser(null);
   };
 
   const getPriorityBadge = (priority?: string) => {
@@ -214,6 +237,23 @@ export default function ConsoleDashboard() {
               <BookOpen className="w-3.5 h-3.5 text-primary" />
               <span>Knowledge Base</span>
             </button>
+
+            <button
+              onClick={() => setActiveTab('dlq')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all relative ${
+                activeTab === 'dlq'
+                  ? 'bg-background text-foreground shadow-xs'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <Skull className="w-3.5 h-3.5 text-destructive" />
+              <span>DLQ</span>
+              {(queueStats?.deadLetterCount ?? 0) > 0 && (
+                <span className="ml-1 px-1.5 py-0.2 rounded-full text-[10px] bg-destructive text-white font-bold animate-pulse">
+                  {queueStats?.deadLetterCount}
+                </span>
+              )}
+            </button>
           </nav>
 
           <div className="flex items-center gap-3">
@@ -289,6 +329,15 @@ export default function ConsoleDashboard() {
           >
             <BookOpen className="w-3.5 h-3.5 text-primary" />
             <span>Knowledge Base</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('dlq')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold relative ${
+              activeTab === 'dlq' ? 'bg-primary/10 text-primary' : 'text-muted-foreground'
+            }`}
+          >
+            <Skull className="w-3.5 h-3.5 text-destructive" />
+            <span>DLQ ({(queueStats?.deadLetterCount ?? 0)})</span>
           </button>
         </div>
 
@@ -425,6 +474,8 @@ export default function ConsoleDashboard() {
         {activeTab === 'approvals' && <ApprovalQueueView />}
 
         {activeTab === 'kb' && <KnowledgeBaseView />}
+
+        {activeTab === 'dlq' && <DeadLetterQueueView />}
       </main>
 
       {/* Ticket Details & Audit Drawer */}

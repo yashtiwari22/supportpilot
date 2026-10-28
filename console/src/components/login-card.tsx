@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Shield, Sparkles, Loader2, KeyRound } from 'lucide-react';
 
 interface LoginCardProps {
-  onSuccess: (user: UserDto) => void;
+  onSuccess?: (user: UserDto) => void;
 }
 
 export function LoginCard({ onSuccess }: LoginCardProps) {
@@ -21,7 +21,7 @@ export function LoginCard({ onSuccess }: LoginCardProps) {
     mutationFn: () => api.auth.login(email, password),
     onSuccess: (data) => {
       setErrorMessage(null);
-      onSuccess(data.user);
+      onSuccess?.(data.user);
     },
     onError: (err: Error) => {
       setErrorMessage(err.message || 'Login failed. Please verify credentials.');
