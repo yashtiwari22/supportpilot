@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api, Ticket, UserDto, WorkflowState, getStoredUser, ApprovalDto } from '@/lib/api';
 import { useEventSource } from '@/hooks/useEventSource';
@@ -32,7 +32,8 @@ import {
 } from 'lucide-react';
 
 export default function ConsoleDashboard() {
-  const [currentUser, setCurrentUser] = useState<UserDto | null>(() => getStoredUser());
+  const [mounted, setMounted] = useState(false);
+  const [currentUser, setCurrentUser] = useState<UserDto | null>(null);
   const [activeTab, setActiveTab] = useState<'board' | 'approvals' | 'kb'>('board');
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
@@ -40,6 +41,11 @@ export default function ConsoleDashboard() {
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('ALL');
   const [priorityFilter, setPriorityFilter] = useState<string>('ALL');
+
+  useEffect(() => {
+    setMounted(true);
+    setCurrentUser(getStoredUser());
+  }, []);
 
   // Real-time SSE connection with auto-reconnect and query invalidation
   const { status: sseStatus } = useEventSource({
@@ -63,6 +69,17 @@ export default function ConsoleDashboard() {
     queryFn: () => api.approvals.listPending(),
     enabled: !!currentUser,
   });
+
+  if (!mounted) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <div className="flex items-center gap-2.5 text-muted-foreground text-xs font-medium">
+          <div className="h-4 w-4 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+          <span>Loading SupportPilot Console...</span>
+        </div>
+      </div>
+    );
+  }
 
   if (!currentUser) {
     return <LoginCard onSuccess={(user) => setCurrentUser(user)} />;
