@@ -32,6 +32,7 @@ public class TicketEvent {
     @Column(name = "to_state", length = 30)
     private WorkflowState toState;
 
+    @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.JSON)
     @Column(columnDefinition = "jsonb")
     private String payload;
 

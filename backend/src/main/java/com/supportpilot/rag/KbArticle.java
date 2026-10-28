@@ -27,6 +27,7 @@ public class KbArticle {
     @Column(nullable = false, columnDefinition = "TEXT")
     private String content;
 
+    @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.JSON)
     @Column(columnDefinition = "jsonb")
     private String metadata;
 

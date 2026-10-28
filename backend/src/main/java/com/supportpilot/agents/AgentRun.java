@@ -43,9 +43,11 @@ public class AgentRun {
     @Column(nullable = false, length = 20)
     private String status = "SUCCESS";
 
+    @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.JSON)
     @Column(name = "input_payload", columnDefinition = "jsonb")
     private String inputPayload;
 
+    @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.JSON)
     @Column(name = "output_payload", columnDefinition = "jsonb")
     private String outputPayload;
 

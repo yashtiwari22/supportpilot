@@ -25,6 +25,7 @@ public class DemoOrder {
     @Column(name = "customer_email", nullable = false)
     private String customerEmail;
 
+    @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.JSON)
     @Column(columnDefinition = "jsonb", nullable = false)
     private String items;
 

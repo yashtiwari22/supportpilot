@@ -59,22 +59,58 @@ public class MockLlmClient implements LlmClient {
         if (userPrompt.contains("triage") || request.systemPrompt().contains("triage")) {
             jsonContent = generateDeterministicTriageResponse(userPrompt);
         } else if (userPrompt.contains("critic") || request.systemPrompt().contains("critic")) {
-            jsonContent = """
-            {
-              "verdict": "APPROVED",
-              "confidence": 0.95,
-              "critique": "Draft accurately addresses customer query and policy without hallucinations.",
-              "requiresRevision": false
+            boolean suspicious = userPrompt.contains("override") 
+                    || userPrompt.contains("ignore all") 
+                    || userPrompt.contains("unacceptable delay")
+                    || userPrompt.contains("third time")
+                    || userPrompt.contains("attacker")
+                    || userPrompt.contains("store voucher");
+            
+            if (suspicious) {
+                jsonContent = """
+                {
+                  "verdict": "AWAITING_APPROVAL",
+                  "confidence": 0.70,
+                  "hallucinationDetected": false,
+                  "policyViolationDetected": true,
+                  "critiqueNotes": "Ticket exhibits prompt injection or heightened escalation requiring human supervisory review.",
+                  "revisionFeedback": "Routing to human agent approval queue.",
+                  "involvesFinancialAction": false
+                }
+                """;
+            } else {
+                jsonContent = """
+                {
+                  "verdict": "APPROVED",
+                  "confidence": 0.95,
+                  "hallucinationDetected": false,
+                  "policyViolationDetected": false,
+                  "critiqueNotes": "Draft accurately addresses customer query with verified policy citations.",
+                  "revisionFeedback": "",
+                  "involvesFinancialAction": false
+                }
+                """;
             }
-            """;
         } else {
-            jsonContent = """
-            {
-              "reply": "Thank you for contacting SupportPilot. We have received your request and our team is assisting you.",
-              "citations": [],
-              "confidence": 0.92
+            String citations = "[]";
+            String reply;
+            if (userPrompt.contains("warranty")) {
+                reply = "According to our Warranty Policy, our standard 1-year manufacturer warranty covers defects in materials and workmanship, but does not cover accidental liquid damage.";
+                citations = "[\"Standard Return and Refund Policy\"]";
+            } else if (userPrompt.contains("return") || userPrompt.contains("refund")) {
+                reply = "Under our Standard Return and Refund Policy, customers enjoy a 30-day return window from delivery date.";
+                citations = "[\"Standard Return and Refund Policy\"]";
+            } else {
+                reply = "Thank you for contacting SupportPilot. We have received your request and our team is assisting you.";
             }
-            """;
+
+            jsonContent = String.format("""
+            {
+              "reply": "%s",
+              "citations": %s,
+              "confidence": 0.94
+            }
+            """, reply.replace("\"", "\\\""), citations);
         }
 
         long duration = System.currentTimeMillis() - startTime;
@@ -110,13 +146,13 @@ public class MockLlmClient implements LlmClient {
                     : text.substring(subjectIdx);
         }
 
-        if (content.contains("refund") || content.contains("return") || content.contains("charged") || content.contains("invoice")) {
-            category = "BILLING";
-            needsAction = true;
-        } else if (content.contains("order") || content.contains("tracking") || content.contains("deliver") || content.contains("package") || content.contains("shipped")) {
+        if (content.contains("ord-") || content.contains("tracking") || content.contains("shipped") || content.contains("package")) {
             category = "ORDER_INQUIRY";
             needsAction = true;
-        } else if (content.contains("broken") || content.contains("error") || content.contains("bluetooth") || content.contains("pair") || content.contains("fail")) {
+        } else if (content.contains("invoice") || content.contains("vat") || content.contains("charged") || content.contains("billing")) {
+            category = "BILLING";
+            needsAction = false;
+        } else if (content.contains("warranty") || content.contains("broken") || content.contains("error") || content.contains("bluetooth") || content.contains("pair") || content.contains("fail")) {
             category = "TECHNICAL";
             needsAction = false;
         } else {
@@ -124,15 +160,15 @@ public class MockLlmClient implements LlmClient {
             needsAction = false;
         }
 
-        if (content.contains("angry") || content.contains("terrible") || content.contains("ridiculous") || content.contains("scam") || content.contains("immediately") || content.contains("urgent")) {
+        if (content.contains("angry") || content.contains("terrible") || content.contains("unacceptable") || content.contains("scam") || content.contains("immediately") || content.contains("urgent")) {
             priority = "URGENT";
             sentiment = "ANGRY";
-        } else if (content.contains("not delivered") || content.contains("delay") || content.contains("waiting") || content.contains("disappointed")) {
+        } else if (content.contains("override") || content.contains("ignore") || content.contains("attacker") || content.contains("damaged") || content.contains("not delivered") || content.contains("delay") || content.contains("waiting")) {
             priority = "HIGH";
-            sentiment = "NEGATIVE";
-        } else if (content.contains("thanks") || content.contains("great") || content.contains("love")) {
+            sentiment = content.contains("damaged") ? "NEGATIVE" : "NEUTRAL";
+        } else if (content.contains("35 days") || content.contains("warranty") || content.contains("thanks") || content.contains("great") || content.contains("love")) {
             priority = "LOW";
-            sentiment = "POSITIVE";
+            sentiment = "NEUTRAL";
         } else {
             priority = "MEDIUM";
             sentiment = "NEUTRAL";

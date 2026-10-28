@@ -26,6 +26,7 @@ public class QueueJob {
     @Column(name = "queue_name", nullable = false, length = 50)
     private String queueName = "tickets";
 
+    @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.JSON)
     @Column(columnDefinition = "jsonb", nullable = false)
     private String payload;
 

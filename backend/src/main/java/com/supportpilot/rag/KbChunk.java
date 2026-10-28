@@ -27,6 +27,7 @@ public class KbChunk {
     @Column(nullable = false, columnDefinition = "TEXT")
     private String content;
 
+    @org.hibernate.annotations.ColumnTransformer(write = "?::vector")
     @Column(columnDefinition = "vector(1536)")
     private String embedding;
 

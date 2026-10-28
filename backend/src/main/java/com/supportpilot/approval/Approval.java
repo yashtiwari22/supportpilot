@@ -31,6 +31,7 @@ public class Approval {
     @Column(name = "proposed_reply", nullable = false, columnDefinition = "TEXT")
     private String proposedReply;
 
+    @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.JSON)
     @Column(name = "proposed_action", columnDefinition = "jsonb")
     private String proposedAction;
 
